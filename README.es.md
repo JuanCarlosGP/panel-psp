@@ -42,4 +42,4 @@ make
 
 El resultado es `EBOOT.PBP`. El icono y la fuente de mapa de bits ya vienen incluidos. Para regenerarlos con `assets.py`, usa Python, Pillow y las fuentes Liberation Sans.
 
-Los avisos de terceros están en [FONT-LICENSE.txt](FONT-LICENSE.txt) y [licenses/](licenses/).
+Los avisos de terceros están en [licenses/](licenses/), incluida la [licencia de la fuente Liberation Sans](licenses/FONT-LICENSE.txt).

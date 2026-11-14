@@ -42,4 +42,4 @@ make
 
 The build produces `EBOOT.PBP`. The icon and bitmap font are included. To regenerate them with `assets.py`, use Python, Pillow, and the Liberation Sans fonts.
 
-Third-party notices are in [FONT-LICENSE.txt](FONT-LICENSE.txt) and [licenses/](licenses/).
+Third-party notices are in [licenses/](licenses/), including the [Liberation Sans font license](licenses/FONT-LICENSE.txt).
