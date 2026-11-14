@@ -22,7 +22,7 @@ Probado en una **PSP-3004 con firmware 6.61 y ARK-5.2.2**. La aplicación usa fu
 
 En el panel principal, mantén **SELECT** y pulsa **□ (cuadrado)** para alternar entre español e inglés. La app guarda tu elección. Al abrirla por primera vez, usa el español si la PSP está en español y el inglés para el resto de idiomas de la consola.
 
-El panel reconoce 14 botones, incluidos **+** y **−**. Una pulsación deja la marca azul. Mantén el botón 5 segundos seguidos para que quede verde. Si se interrumpe la pulsación, su contador vuelve a cero. Mantén **SELECT + START** para borrar las marcas.
+El panel reconoce 14 botones, incluidos **+** y **−**. Una pulsación deja la marca azul. Mantén el botón 5 segundos seguidos para que quede verde. Si se interrumpe la pulsación, su contador vuelve a cero. Para borrar las marcas, mantén **SELECT** y pulsa **○ (círculo)**.
 
 Mantén **SELECT** y pulsa **X** para abrir la prueba del stick.
 

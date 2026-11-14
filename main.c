@@ -161,10 +161,11 @@ int main(void)
     ButtonTest button_test = {0};
     StickTest stick = {0};
     const unsigned int stick_shortcut = PSP_CTRL_SELECT | PSP_CTRL_CROSS;
+    const unsigned int clear_shortcut = PSP_CTRL_SELECT | PSP_CTRL_CIRCLE;
     const unsigned int language_shortcut = PSP_CTRL_SELECT | PSP_CTRL_SQUARE;
-    const unsigned int panel_shortcut_buttons = stick_shortcut | language_shortcut | PSP_CTRL_CIRCLE;
+    const unsigned int panel_shortcut_buttons = stick_shortcut | clear_shortcut | language_shortcut;
     unsigned int previous_buttons = 0;
-    bool wait_panel_release = false;
+    bool waiting_for_release = false;
     uint64_t next_battery = 0, next_storage = 0, next_system = 0;
     bool needs_draw = true;
     unsigned int back_buffer = 0;
@@ -199,6 +200,7 @@ int main(void)
             continue;
         }
 
+        bool skip_button_test = waiting_for_release;
         if (have_pad) {
             unsigned int buttons = pad.Buttons;
             unsigned int newly_pressed = buttons & ~previous_buttons;
@@ -207,23 +209,31 @@ int main(void)
                     button_test_pause(&button_test, &panel);
                     stick = (StickTest){.phase = STICK_READY};
                     needs_draw = true;
+                } else if ((buttons & clear_shortcut) == clear_shortcut &&
+                           (newly_pressed & clear_shortcut)) {
+                    button_test_pause(&button_test, &panel);
+                    panel.tested = 0;
+                    panel.validated = 0;
+                    waiting_for_release = true;
+                    needs_draw = true;
                 } else if ((buttons & language_shortcut) == language_shortcut &&
                            (newly_pressed & language_shortcut)) {
                     button_test_pause(&button_test, &panel);
                     panel.language = panel.language == PANEL_SPANISH ? PANEL_ENGLISH : PANEL_SPANISH;
                     panel.language_unsaved = !save_language(panel.language);
-                    wait_panel_release = true;
+                    waiting_for_release = true;
                     needs_draw = true;
                 }
             } else if (newly_pressed & PSP_CTRL_CIRCLE) {
                 stick.phase = STICK_CLOSED;
-                wait_panel_release = true;
+                waiting_for_release = true;
                 needs_draw = true;
             } else if (newly_pressed & PSP_CTRL_CROSS) {
                 needs_draw |= stick_test_confirm(&stick);
             }
+            skip_button_test = waiting_for_release;
             if (!(buttons & panel_shortcut_buttons))
-                wait_panel_release = false;
+                waiting_for_release = false;
             previous_buttons = buttons;
 
             if (panel.stick_x != pad.Lx || panel.stick_y != pad.Ly) {
@@ -240,13 +250,14 @@ int main(void)
                 needs_draw |= stick_test_sample(&stick, pad.TimeStamp, pad.Lx, pad.Ly);
             else
                 needs_draw |= stick_test_pause(&stick);
-        } else if (!wait_panel_release) {
+        } else if (!skip_button_test) {
             SceCtrlData samples[CONTROLLER_HISTORY];
-            int requested = button_test.have_sample ? CONTROLLER_HISTORY : 1;
-            int count = read_button_samples(peek_driver, samples, requested);
-            if (count > 0 && count <= requested) {
+            int count = read_button_samples(peek_driver, samples, CONTROLLER_HISTORY);
+            if (count > 0 && count <= CONTROLLER_HISTORY) {
                 // The button test also checks for releases between screen updates.
-                for (int i = 0; i < count; ++i)
+                // After a shortcut, start with the newest sample and discard the buffered presses.
+                int first = button_test.have_sample ? 0 : count - 1;
+                for (int i = first; i < count; ++i)
                     needs_draw |= button_test_sample(&button_test, &panel,
                                                      samples[i].TimeStamp, samples[i].Buttons);
             } else {

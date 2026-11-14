@@ -313,30 +313,10 @@ static const Button buttons[] = {
     {PSP_CTRL_VOLUP,    429,  56, 23, LABEL, "+"},
 };
 
-static void draw_button(uint32_t *pixels, const Button *button, const Panel *panel)
+static void draw_symbol(uint32_t *pixels, enum Symbol symbol, int cx, int cy,
+                        uint32_t ink, uint32_t fill)
 {
-    const int x = button->x, y = button->y, w = button->width;
-    const int cx = x + w / 2, cy = y + 8;
-    uint32_t rim = RGB(0x3b4e67);
-    uint32_t fill = well;
-    uint32_t ink = muted;
-
-    if (panel->pressed & button->mask) {
-        rim = fill = (panel->holding_complete & button->mask) ? hold_green : mint;
-        ink = well;
-    } else if (panel->validated & button->mask) {
-        rim = RGB(0x68ad85);
-        fill = RGB(0x203e38);
-        ink = RGB(0xb5e6c8);
-    } else if (panel->tested & button->mask) {
-        rim = RGB(0x5899cb);
-        fill = RGB(0x213853);
-        ink = RGB(0xc0dcff);
-    }
-    round_box(pixels, x, y, w, 18, 5, rim);
-    round_box(pixels, x + 1, y + 1, w - 2, 16, 4, fill);
-
-    switch (button->symbol) {
+    switch (symbol) {
     case UP:
         stroke(pixels, cx - 4, cy + 2, cx, cy - 2, ink);
         stroke(pixels, cx, cy - 2, cx + 4, cy + 2, ink);
@@ -370,12 +350,40 @@ static void draw_button(uint32_t *pixels, const Button *button, const Panel *pan
         box(pixels, cx - 5, cy - 4, 10, 10, ink);
         box(pixels, cx - 3, cy - 2, 6, 6, fill);
         break;
-    case LABEL: {
+    case LABEL:
+        break;
+    }
+}
+
+static void draw_button(uint32_t *pixels, const Button *button, const Panel *panel)
+{
+    const int x = button->x, y = button->y, w = button->width;
+    const int cx = x + w / 2, cy = y + 8;
+    uint32_t rim = RGB(0x3b4e67);
+    uint32_t fill = well;
+    uint32_t ink = muted;
+
+    if (panel->pressed & button->mask) {
+        rim = fill = (panel->holding_complete & button->mask) ? hold_green : mint;
+        ink = well;
+    } else if (panel->validated & button->mask) {
+        rim = RGB(0x68ad85);
+        fill = RGB(0x203e38);
+        ink = RGB(0xb5e6c8);
+    } else if (panel->tested & button->mask) {
+        rim = RGB(0x5899cb);
+        fill = RGB(0x213853);
+        ink = RGB(0xc0dcff);
+    }
+    round_box(pixels, x, y, w, 18, 5, rim);
+    round_box(pixels, x + 1, y + 1, w - 2, 16, 4, fill);
+
+    if (button->symbol == LABEL) {
         const Font *font = button->mask & (PSP_CTRL_SELECT | PSP_CTRL_START) ? &button_font : &small_font;
         draw_text(pixels, font, cx - text_width(font, button->label) / 2,
                   y + 13, button->label, ink);
-        break;
-    }
+    } else {
+        draw_symbol(pixels, button->symbol, cx, cy, ink, fill);
     }
 }
 
@@ -406,18 +414,36 @@ static void draw_background(uint32_t *pixels)
     }
 }
 
-static void draw_language_shortcut(uint32_t *pixels, enum PanelLanguage language)
+static const char shortcut_prefix[] = "SELECT +";
+enum { FOOTER_BASELINE = 260, FOOTER_ICON_GAP = 12 };
+
+static void draw_shortcut(uint32_t *pixels, int x, int action_offset, enum Symbol symbol)
 {
+    draw_text(pixels, &small_font, x, FOOTER_BASELINE, shortcut_prefix, blue);
+    draw_symbol(pixels, symbol, x + action_offset - FOOTER_ICON_GAP, FOOTER_BASELINE - 5, blue, well);
+}
+
+static void draw_panel_footer(uint32_t *pixels, enum PanelLanguage language)
+{
+    const char *stick = localized(language, "Probar stick", "Test stick");
+    const char *clear = localized(language, "Borrar", "Clear");
+    const int action_offset = text_width(&small_font, shortcut_prefix) + 2 * FOOTER_ICON_GAP;
+    const int clear_x = (PANEL_WIDTH - action_offset - text_width(&small_font, clear)) / 2;
+    const int language_x = 464 - action_offset - 50;
+    const int switch_x = language_x + action_offset;
     bool english = language == PANEL_ENGLISH;
-    round_box(pixels, 172, 136, 144, 20, 6, border);
-    round_box(pixels, 173, 137, 142, 18, 5, well);
-    draw_text(pixels, &small_font, 182, 150, "SELECT +", blue);
-    box(pixels, 243, 141, 9, 9, blue);
-    box(pixels, 244, 142, 7, 7, well);
-    box(pixels, 261, 141, 1, 10, border);
-    round_box(pixels, english ? 289 : 265, 139, 23, 14, 4, RGB(0x213853));
-    draw_text(pixels, &button_font, 270, 150, "ES", english ? muted : blue);
-    draw_text(pixels, &button_font, 294, 150, "EN", english ? blue : muted);
+
+    draw_shortcut(pixels, 16, action_offset, CROSS);
+    draw_text(pixels, &small_font, 16 + action_offset, FOOTER_BASELINE, stick, muted);
+
+    draw_shortcut(pixels, clear_x, action_offset, CIRCLE);
+    draw_text(pixels, &small_font, clear_x + action_offset, FOOTER_BASELINE, clear, muted);
+
+    draw_shortcut(pixels, language_x, action_offset, SQUARE);
+    round_box(pixels, switch_x + (english ? 27 : 0), FOOTER_BASELINE - 12, 23, 16, 4, RGB(0x213853));
+    box(pixels, switch_x + 24, FOOTER_BASELINE - 10, 1, 11, muted);
+    draw_text(pixels, &small_font, switch_x + 3, FOOTER_BASELINE, "ES", english ? muted : blue);
+    draw_text(pixels, &small_font, switch_x + 30, FOOTER_BASELINE, "EN", english ? blue : muted);
 }
 
 void panel_draw(uint32_t *pixels, const Panel *panel)
@@ -439,7 +465,6 @@ void panel_draw(uint32_t *pixels, const Panel *panel)
 
     card_box(pixels, 16, 132, 448, 109);
     draw_text(pixels, &label_font, 28, 149, localized(language, "Prueba de botones", "Button test"), text);
-    draw_language_shortcut(pixels, language);
     unsigned int count = 0;
     for (size_t i = 0; i < sizeof buttons / sizeof buttons[0]; ++i)
         count += (panel->tested & buttons[i].mask) != 0;
@@ -460,16 +485,7 @@ void panel_draw(uint32_t *pixels, const Panel *panel)
         draw_button(pixels, &buttons[i], panel);
     draw_stick(pixels, panel->stick_x, panel->stick_y);
 
-    const char *exit = localized(language, "Salir", "Exit");
-    const char *stick = localized(language, "SELECT + X   Probar stick", "SELECT + X   Test stick");
-    const char *reset = localized(language, "Mantén SELECT + START   Borrar marcas", "Hold SELECT + START   Clear marks");
-    int exit_right = 38 + text_width(&small_font, exit);
-    int reset_left = 464 - text_width(&small_font, reset);
-    int stick_left = (exit_right + reset_left - text_width(&small_font, stick)) / 2;
-    draw_text(pixels, &label_font, 16, 260, "PS", blue);
-    draw_text(pixels, &small_font, 38, 260, exit, muted);
-    draw_text(pixels, &small_font, stick_left, 260, stick, blue);
-    draw_text(pixels, &small_font, reset_left, 260, reset, muted);
+    draw_panel_footer(pixels, language);
 }
 
 static void draw_stick_map(uint32_t *pixels, const Panel *panel, const StickTest *test)

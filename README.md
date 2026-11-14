@@ -22,7 +22,7 @@ Tested on a **PSP-3004 running firmware 6.61 with ARK-5.2.2**. The app uses [ARK
 
 Hold **SELECT** and press **□ (Square)** on the main panel to switch between English and Spanish. The app remembers your choice. The first time you open it, it uses Spanish if your PSP is set to Spanish and English for the other system languages.
 
-The panel recognizes 14 buttons, including **+** and **−**. A quick press marks a button blue. Hold it down for 5 seconds straight to turn it green. Releasing it early resets its timer. Hold **SELECT + START** to clear the marks.
+The panel recognizes 14 buttons, including **+** and **−**. A quick press marks a button blue. Hold it down for 5 seconds straight to turn it green. Releasing it early resets its timer. To clear the marks, hold **SELECT** and press **○ (Circle)**.
 
 Hold **SELECT** and press **X** to open the analog stick test.
 
