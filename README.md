@@ -1,41 +1,43 @@
 # Panel PSP
 
-Panel de diagnóstico para PlayStation Portable. Consulta la batería, el espacio libre en la Memory Stick, el volumen y la posición del interruptor WLAN. Prueba también los botones y el stick analógico desde la propia consola.
+[Español](README.es.md)
 
-[Descargar Panel PSP](https://github.com/JuanCarlosGP/panel-psp/releases/latest/download/Panel-PSP.zip)
+A diagnostic app for the PlayStation Portable. Check the battery level, free space on the Memory Stick, system volume, and WLAN switch position. Test the buttons and analog stick directly on the console. The app interface is in Spanish.
 
-| Panel principal | Prueba del stick |
+[Download Panel PSP](https://github.com/JuanCarlosGP/panel-psp/releases/latest/download/Panel-PSP.zip)
+
+| Main panel | Analog stick test |
 | --- | --- |
-| ![Panel de batería, almacenamiento, volumen y botones con datos de ejemplo](docs/panel.png) | ![Resultados de reposo, vuelta al centro y recorrido con datos de ejemplo](docs/stick.png) |
+| ![Battery, storage, volume, and button panel with sample readings](docs/panel.png) | ![Sample results for the stick at rest, return to center, and outer range](docs/stick.png) |
 
-## Instalación
+## Installation
 
-Probado en una **PSP-3004 con firmware 6.61 y ARK-5.2.2**. La aplicación usa funciones de [ARK-5](https://github.com/PSP-Arkfive/ARK-5) para leer el volumen y sus botones.
+Tested on a **PSP-3004 running firmware 6.61 with ARK-5.2.2**. The app uses [ARK-5](https://github.com/PSP-Arkfive/ARK-5) functions to read the volume level and detect presses on the volume buttons.
 
-1. Descarga y descomprime `Panel-PSP.zip`.
-2. Copia la carpeta `PSP` del ZIP a la raíz de la Memory Stick. El ejecutable debe quedar en `PSP/GAME/PANELPSP/EBOOT.PBP`.
-3. En la consola, abre **Juego → Memory Stick → Panel PSP**.
+1. Download and extract `Panel-PSP.zip`.
+2. Copy the `PSP` folder from the ZIP to the root of the Memory Stick. The executable should be at `PSP/GAME/PANELPSP/EBOOT.PBP`.
+3. On the console, open **Game → Memory Stick → Panel PSP**.
 
-## Pruebas
+## Testing the controls
 
-El panel reconoce 14 botones, incluidos **+** y **−**. Una pulsación deja la marca azul. Mantén el botón 5 segundos seguidos para que quede verde. Si se interrumpe la pulsación, su contador vuelve a cero. Mantén **SELECT + START** para borrar las marcas.
+The panel recognizes 14 buttons, including **+** and **−**. A quick press marks a button blue. Hold it down for 5 seconds straight to turn it green. Releasing it early resets its timer. Hold **SELECT + START** to clear the marks.
 
-Mantén **SELECT** y pulsa **X** para abrir la prueba del stick.
+Hold **SELECT** and press **X** to open the analog stick test.
 
-1. **Reposo.** Pulsa **X** y deja el stick quieto 5 segundos para medir su desvío y su oscilación.
-2. **Vuelta al centro.** Empuja el stick al tope de un eje y suéltalo. El panel observa durante 2 segundos si vuelve al centro y se estabiliza. Si la cuenta no empieza al soltarlo, pulsa **X** con el stick ya suelto.
-3. **Recorrido por el borde.** Pulsa **X** y da una vuelta lenta por el borde. La cuadrícula muestra el alcance de cada eje y marca los cuatro lados y las cuatro esquinas. Pulsa **X** para ver el resultado.
+1. **At rest.** Press **X** and leave the stick untouched for 5 seconds. The panel measures how far it sits from the center and how much it jitters.
+2. **Return to center.** Push the stick all the way up, down, left, or right, then let go. The panel checks for 2 seconds whether the stick returns to center and settles. If the countdown doesn't start when you let go, press **X** with the stick released.
+3. **Outer range.** Press **X** and slowly sweep the stick around the outer edge. The grid shows the range of each axis and marks all four sides and corners. Press **X** to see the results.
 
-## Compilación
+## Building from source
 
-Instala [PSPDEV](https://github.com/pspdev/pspdev/releases/tag/v20261001). El proyecto enlaza con las bibliotecas de importación de [psp-cfw-sdk](https://github.com/pspdev/psp-cfw-sdk), incluidas en esa distribución de PSPDEV.
+Install [PSPDEV](https://github.com/pspdev/pspdev/releases/tag/v20261001). The project links against the [psp-cfw-sdk](https://github.com/pspdev/psp-cfw-sdk) import libraries included in that PSPDEV release.
 
 ```sh
-export PSPDEV=/ruta/a/pspdev
+export PSPDEV=/path/to/pspdev
 export PATH="$PSPDEV/bin:$PATH"
 make
 ```
 
-El resultado es `EBOOT.PBP`. El icono y la fuente de mapa de bits ya vienen incluidos. Para regenerarlos con `assets.py`, usa Python, Pillow y las fuentes Liberation Sans.
+The build produces `EBOOT.PBP`. The icon and bitmap font are included. To regenerate them with `assets.py`, use Python, Pillow, and the Liberation Sans fonts.
 
-Los avisos de terceros están en [FONT-LICENSE.txt](FONT-LICENSE.txt) y [licenses/](licenses/).
+Third-party notices are in [FONT-LICENSE.txt](FONT-LICENSE.txt) and [licenses/](licenses/).
