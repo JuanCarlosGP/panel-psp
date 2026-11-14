@@ -2,7 +2,7 @@
 
 [Español](README.es.md)
 
-A diagnostic app for the PlayStation Portable. Check the battery level, free space on the Memory Stick, system volume, and WLAN switch position. Test the buttons and analog stick directly on the console. The app interface is in Spanish.
+A diagnostic app for the PlayStation Portable. Check the battery level, free space on the Memory Stick, system volume, and WLAN switch position. Test the buttons and analog stick directly on the console.
 
 [Download Panel PSP](https://github.com/JuanCarlosGP/panel-psp/releases/latest/download/Panel-PSP.zip)
 
@@ -19,6 +19,8 @@ Tested on a **PSP-3004 running firmware 6.61 with ARK-5.2.2**. The app uses [ARK
 3. On the console, open **Game → Memory Stick → Panel PSP**.
 
 ## Testing the controls
+
+Hold **SELECT** and press **□ (Square)** on the main panel to switch between English and Spanish. The app remembers your choice. The first time you open it, it uses Spanish if your PSP is set to Spanish and English for the other system languages.
 
 The panel recognizes 14 buttons, including **+** and **−**. A quick press marks a button blue. Hold it down for 5 seconds straight to turn it green. Releasing it early resets its timer. Hold **SELECT + START** to clear the marks.
 

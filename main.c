@@ -2,6 +2,7 @@
 #include <pspdisplay.h>
 #include <pspge.h>
 #include <psppower.h>
+#include <psputility_sysparam.h>
 #include <pspwlan.h>
 #include <pspimpose_driver.h>
 #include <kubridge.h>
@@ -11,7 +12,7 @@
 #include "panel.h"
 #include "button_test.h"
 
-PSP_MODULE_INFO("Panel PSP", PSP_MODULE_USER, 1, 0);
+PSP_MODULE_INFO("Panel PSP", PSP_MODULE_USER, 1, 1);
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 
 enum {
@@ -54,6 +55,15 @@ static int exit_thread(SceSize argc, void *argv)
     return sceKernelSleepThreadCB();
 }
 
+static enum PanelLanguage system_language(void)
+{
+    int language;
+    if (sceUtilityGetSystemParamInt(PSP_SYSTEMPARAM_ID_INT_LANGUAGE, &language) == 0 &&
+        language != PSP_SYSTEMPARAM_LANGUAGE_SPANISH)
+        return PANEL_ENGLISH;
+    return PANEL_SPANISH;
+}
+
 static void read_battery(Panel *panel)
 {
     int present = scePowerIsBatteryExist();
@@ -61,15 +71,15 @@ static void read_battery(Panel *panel)
     panel->battery_percent = (percent >= 0 && percent <= 100) ? percent : -1;
 
     if (present == 0)
-        panel->battery_status = "Sin batería";
+        panel->battery_status = BATTERY_ABSENT;
     else if (panel->battery_percent < 0)
-        panel->battery_status = "Sin lectura";
+        panel->battery_status = BATTERY_UNAVAILABLE;
     else if (scePowerIsBatteryCharging() > 0)
-        panel->battery_status = "Cargando";
+        panel->battery_status = BATTERY_CHARGING;
     else if (scePowerIsPowerOnline() > 0)
-        panel->battery_status = "Conectada";
+        panel->battery_status = BATTERY_PLUGGED_IN;
     else
-        panel->battery_status = "En batería";
+        panel->battery_status = BATTERY_DISCHARGING;
 }
 
 static void read_storage(Panel *panel)
@@ -141,10 +151,18 @@ int main(void)
     // ARK resolves the firmware's NIDs and calls these read-only driver functions.
     void *get_param = (void *)sctrlHENFindFunction("sceImpose_Driver", "sceImpose_driver", 0x531C9778);
     void *peek_driver = (void *)sctrlHENFindFunction("sceController_Service", "sceCtrl_driver", 0x3A622550);
-    Panel panel = {.stick_x = STICK_MIDPOINT, .stick_y = STICK_MIDPOINT, .volume = -1, .wlan_switch = -1};
+    Panel panel = {
+        .language = load_language(system_language()),
+        .stick_x = STICK_MIDPOINT,
+        .stick_y = STICK_MIDPOINT,
+        .volume = -1,
+        .wlan_switch = -1,
+    };
     ButtonTest button_test = {0};
     StickTest stick = {0};
     const unsigned int stick_shortcut = PSP_CTRL_SELECT | PSP_CTRL_CROSS;
+    const unsigned int language_shortcut = PSP_CTRL_SELECT | PSP_CTRL_SQUARE;
+    const unsigned int panel_shortcut_buttons = stick_shortcut | language_shortcut | PSP_CTRL_CIRCLE;
     unsigned int previous_buttons = 0;
     bool wait_panel_release = false;
     uint64_t next_battery = 0, next_storage = 0, next_system = 0;
@@ -189,6 +207,13 @@ int main(void)
                     button_test_pause(&button_test, &panel);
                     stick = (StickTest){.phase = STICK_READY};
                     needs_draw = true;
+                } else if ((buttons & language_shortcut) == language_shortcut &&
+                           (newly_pressed & language_shortcut)) {
+                    button_test_pause(&button_test, &panel);
+                    panel.language = panel.language == PANEL_SPANISH ? PANEL_ENGLISH : PANEL_SPANISH;
+                    panel.language_unsaved = !save_language(panel.language);
+                    wait_panel_release = true;
+                    needs_draw = true;
                 }
             } else if (newly_pressed & PSP_CTRL_CIRCLE) {
                 stick.phase = STICK_CLOSED;
@@ -197,7 +222,7 @@ int main(void)
             } else if (newly_pressed & PSP_CTRL_CROSS) {
                 needs_draw |= stick_test_confirm(&stick);
             }
-            if (!(buttons & (stick_shortcut | PSP_CTRL_CIRCLE)))
+            if (!(buttons & panel_shortcut_buttons))
                 wait_panel_release = false;
             previous_buttons = buttons;
 

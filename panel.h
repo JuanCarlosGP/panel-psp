@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <pspctrl.h>
+#include "language.h"
 #include "stick_test.h"
 
 enum { PANEL_WIDTH = 480, PANEL_HEIGHT = 272, PANEL_STRIDE = 512, PANEL_VOLUME_MAX = 30 };
@@ -12,9 +13,19 @@ enum { PANEL_WIDTH = 480, PANEL_HEIGHT = 272, PANEL_STRIDE = 512, PANEL_VOLUME_M
                        PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER | PSP_CTRL_SELECT | PSP_CTRL_START | \
                        PSP_CTRL_VOLDOWN | PSP_CTRL_VOLUP)
 
+enum BatteryStatus {
+    BATTERY_UNAVAILABLE,
+    BATTERY_ABSENT,
+    BATTERY_CHARGING,
+    BATTERY_PLUGGED_IN,
+    BATTERY_DISCHARGING,
+};
+
 typedef struct {
+    enum PanelLanguage language;
+    bool language_unsaved;
     int battery_percent;
-    const char *battery_status;
+    enum BatteryStatus battery_status;
     uint64_t free_bytes;
     uint64_t total_bytes;
     unsigned int pressed;

@@ -8,7 +8,7 @@ Panel de diagnóstico para PlayStation Portable. Consulta la batería, el espaci
 
 | Panel principal | Prueba del stick |
 | --- | --- |
-| ![Panel de batería, almacenamiento, volumen y botones con datos de ejemplo](docs/panel.png) | ![Resultados de reposo, vuelta al centro y recorrido con datos de ejemplo](docs/stick.png) |
+| ![Panel de batería, almacenamiento, volumen y botones con datos de ejemplo](docs/panel-es.png) | ![Resultados de reposo, vuelta al centro y recorrido con datos de ejemplo](docs/stick-es.png) |
 
 ## Instalación
 
@@ -19,6 +19,8 @@ Probado en una **PSP-3004 con firmware 6.61 y ARK-5.2.2**. La aplicación usa fu
 3. En la consola, abre **Juego → Memory Stick → Panel PSP**.
 
 ## Pruebas
+
+En el panel principal, mantén **SELECT** y pulsa **□ (cuadrado)** para alternar entre español e inglés. La app guarda tu elección. Al abrirla por primera vez, usa el español si la PSP está en español y el inglés para el resto de idiomas de la consola.
 
 El panel reconoce 14 botones, incluidos **+** y **−**. Una pulsación deja la marca azul. Mantén el botón 5 segundos seguidos para que quede verde. Si se interrumpe la pulsación, su contador vuelve a cero. Mantén **SELECT + START** para borrar las marcas.
 

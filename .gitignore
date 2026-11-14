@@ -3,4 +3,5 @@
 *.prx
 /EBOOT.PBP
 /PARAM.SFO
+/panel-language.cfg
 /__pycache__/

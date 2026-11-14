@@ -31,6 +31,16 @@ typedef struct {
 
 #include "font.inc"
 
+static const char *localized(enum PanelLanguage language, const char *spanish, const char *english)
+{
+    return language == PANEL_ENGLISH ? english : spanish;
+}
+
+static char decimal_point(enum PanelLanguage language)
+{
+    return language == PANEL_ENGLISH ? '.' : ',';
+}
+
 static void box(uint32_t *pixels, int x, int y, int w, int h, uint32_t color)
 {
     int right = x + w;
@@ -174,20 +184,20 @@ static void draw_hold_progress(uint32_t *pixels, const Panel *panel)
     char duration[16];
     unsigned int tenths = panel->hold_percent * BUTTON_HOLD_SECONDS / 10;
     if (panel->pressed && panel->hold_percent < 100)
-        snprintf(duration, sizeof duration, "%u,%u s", tenths / 10, tenths % 10);
+        snprintf(duration, sizeof duration, "%u%c%u s", tenths / 10, decimal_point(panel->language), tenths % 10);
     else
         snprintf(duration, sizeof duration, "%d s", BUTTON_HOLD_SECONDS);
 
     uint32_t color = panel->hold_percent == 100 ? hold_green : blue;
     round_box(pixels, 154, 16, 166, 24, 8, border);
     round_box(pixels, 155, 17, 164, 22, 7, card);
-    draw_text(pixels, &label_font, 166, 32, "Mantén", text);
+    draw_text(pixels, &label_font, 166, 32, localized(panel->language, "Mantén", "Hold"), text);
     draw_meter(pixels, 216, 25, 60, panel->hold_percent, color);
     draw_text(pixels, &small_font, 309 - text_width(&small_font, duration), 32, duration,
               panel->pressed ? color : muted);
 }
 
-static void format_size(char *out, size_t size, uint64_t bytes, int decimal)
+static void format_size(char *out, size_t size, uint64_t bytes, char point)
 {
     uint64_t unit = UINT64_C(1024) * 1024;
     const char *suffix = "MiB";
@@ -199,20 +209,34 @@ static void format_size(char *out, size_t size, uint64_t bytes, int decimal)
         unit *= 1024;
         suffix = "TiB";
     }
-    if (decimal) {
+    if (point) {
         unsigned long whole = (unsigned long)(bytes / unit);
         unsigned int fraction = (unsigned int)((bytes % unit) * 10 / unit);
-        snprintf(out, size, "%lu,%u %s", whole, fraction, suffix);
+        snprintf(out, size, "%lu%c%u %s", whole, point, fraction, suffix);
     } else {
         snprintf(out, size, "%lu %s", (unsigned long)((bytes + unit / 2) / unit), suffix);
     }
 }
 
+static const char *battery_status_text(enum PanelLanguage language, enum BatteryStatus status)
+{
+    switch (status) {
+    case BATTERY_ABSENT: return localized(language, "Sin batería", "No battery");
+    case BATTERY_CHARGING: return localized(language, "Cargando", "Charging");
+    case BATTERY_PLUGGED_IN: return localized(language, "Conectada", "Plugged in");
+    case BATTERY_DISCHARGING: return localized(language, "En batería", "On battery");
+    default: return localized(language, "Sin lectura", "Unavailable");
+    }
+}
+
 static void draw_status(uint32_t *pixels, const Panel *panel)
 {
+    enum PanelLanguage language = panel->language;
+    const char *unavailable = localized(language, "Sin lectura", "Unavailable");
     char battery[16] = "--";
     char space[32] = "--";
-    char total[36] = "Sin lectura";
+    char total[36];
+    const char *total_label = unavailable;
     char volume[16] = "--";
     unsigned int battery_fill = 0;
     unsigned int free_fill = 0;
@@ -226,10 +250,11 @@ static void draw_status(uint32_t *pixels, const Panel *panel)
             battery_color = amber;
     }
     if (panel->total_bytes) {
-        format_size(space, sizeof space, panel->free_bytes, 1);
+        format_size(space, sizeof space, panel->free_bytes, decimal_point(language));
         char capacity[32];
         format_size(capacity, sizeof capacity, panel->total_bytes, 0);
-        snprintf(total, sizeof total, "de %s", capacity);
+        snprintf(total, sizeof total, localized(language, "de %s", "of %s"), capacity);
+        total_label = total;
         free_fill = (unsigned int)(panel->free_bytes * 100 / panel->total_bytes);
     }
     if (panel->volume >= 0) {
@@ -241,11 +266,11 @@ static void draw_status(uint32_t *pixels, const Panel *panel)
     card_box(pixels, 16, 49, 128, 77);
     card_box(pixels, 154, 49, 166, 77);
     card_box(pixels, 330, 49, 134, 77);
-    draw_text(pixels, &label_font, 28, 67, "Batería", muted);
-    draw_text(pixels, &label_font, 166, 67, "Espacio libre", muted);
-    draw_text(pixels, &label_font, 342, 67, "Volumen", muted);
-    draw_text(pixels, &small_font, 28, 107, panel->battery_status, muted);
-    draw_text(pixels, &small_font, 166, 107, total, muted);
+    draw_text(pixels, &label_font, 28, 67, localized(language, "Batería", "Battery"), muted);
+    draw_text(pixels, &label_font, 166, 67, localized(language, "Espacio libre", "Free space"), muted);
+    draw_text(pixels, &label_font, 342, 67, localized(language, "Volumen", "Volume"), muted);
+    draw_text(pixels, &small_font, 28, 107, battery_status_text(language, panel->battery_status), muted);
+    draw_text(pixels, &small_font, 166, 107, total_label, muted);
 
     draw_text(pixels, &large_font, 28, 93, battery, text);
     draw_text(pixels, &large_font, 166, 93, space, text);
@@ -253,9 +278,9 @@ static void draw_status(uint32_t *pixels, const Panel *panel)
     if (panel->volume >= 0) {
         draw_text(pixels, &small_font, 346 + text_width(&large_font, volume), 92, "/ 30", muted);
         if (panel->volume_muted)
-            draw_text(pixels, &small_font, 342, 107, "Silencio", violet);
+            draw_text(pixels, &small_font, 342, 107, localized(language, "Silencio", "Muted"), violet);
     } else {
-        draw_text(pixels, &small_font, 342, 107, "Sin lectura", muted);
+        draw_text(pixels, &small_font, 342, 107, unavailable, muted);
     }
     draw_meter(pixels, 28, 113, 104, battery_fill, battery_color);
     draw_meter(pixels, 166, 113, 142, free_fill, blue);
@@ -381,13 +406,29 @@ static void draw_background(uint32_t *pixels)
     }
 }
 
+static void draw_language_shortcut(uint32_t *pixels, enum PanelLanguage language)
+{
+    bool english = language == PANEL_ENGLISH;
+    round_box(pixels, 172, 136, 144, 20, 6, border);
+    round_box(pixels, 173, 137, 142, 18, 5, well);
+    draw_text(pixels, &small_font, 182, 150, "SELECT +", blue);
+    box(pixels, 243, 141, 9, 9, blue);
+    box(pixels, 244, 142, 7, 7, well);
+    box(pixels, 261, 141, 1, 10, border);
+    round_box(pixels, english ? 289 : 265, 139, 23, 14, 4, RGB(0x213853));
+    draw_text(pixels, &button_font, 270, 150, "ES", english ? muted : blue);
+    draw_text(pixels, &button_font, 294, 150, "EN", english ? blue : muted);
+}
+
 void panel_draw(uint32_t *pixels, const Panel *panel)
 {
+    enum PanelLanguage language = panel->language;
     draw_background(pixels);
     draw_text(pixels, &large_font, 16, 35, "Panel PSP", text);
     draw_hold_progress(pixels, panel);
-    const char *wlan = panel->wlan_switch < 0 ? "Sin lectura" :
-                       panel->wlan_switch > 0 ? "Activado" : "Apagado";
+    const char *wlan = panel->wlan_switch < 0 ? localized(language, "Sin lectura", "Unknown") :
+                       panel->wlan_switch > 0 ? localized(language, "Activado", "On") :
+                       localized(language, "Apagado", "Off");
     uint32_t wlan_color = panel->wlan_switch > 0 ? mint : muted;
     round_box(pixels, 331, 16, 133, 24, 8, border);
     round_box(pixels, 332, 17, 131, 22, 7, card);
@@ -397,27 +438,31 @@ void panel_draw(uint32_t *pixels, const Panel *panel)
     draw_status(pixels, panel);
 
     card_box(pixels, 16, 132, 448, 109);
-    draw_text(pixels, &label_font, 28, 149, "Prueba de botones", text);
+    draw_text(pixels, &label_font, 28, 149, localized(language, "Prueba de botones", "Button test"), text);
+    draw_language_shortcut(pixels, language);
     unsigned int count = 0;
     for (size_t i = 0; i < sizeof buttons / sizeof buttons[0]; ++i)
         count += (panel->tested & buttons[i].mask) != 0;
     char tested[24];
-    snprintf(tested, sizeof tested, "%u/%u probados", count,
+    snprintf(tested, sizeof tested, localized(language, "%u/%u probados", "%u/%u tested"), count,
              (unsigned int)(sizeof buttons / sizeof buttons[0]));
-    draw_text(pixels, &small_font, 452 - text_width(&small_font, tested), 149, tested,
-              count == sizeof buttons / sizeof buttons[0] ? mint : muted);
+    const char *status = panel->language_unsaved ?
+                         localized(language, "Idioma sin guardar", "Language not saved") : tested;
+    uint32_t status_color = panel->language_unsaved ? amber :
+                            count == sizeof buttons / sizeof buttons[0] ? mint : muted;
+    draw_text(pixels, &small_font, 452 - text_width(&small_font, status), 149, status, status_color);
 
-    draw_text(pixels, &small_font, 28, 166, "Cruceta", muted);
-    draw_text(pixels, &small_font, 138, 166, "Símbolos", muted);
-    draw_text(pixels, &small_font, 246, 166, "Gatillos y menú", muted);
-    draw_text(pixels, &small_font, 367, 166, "Stick analógico", muted);
+    draw_text(pixels, &small_font, 28, 166, localized(language, "Cruceta", "D-pad"), muted);
+    draw_text(pixels, &small_font, 138, 166, localized(language, "Símbolos", "Face buttons"), muted);
+    draw_text(pixels, &small_font, 246, 166, localized(language, "Gatillos y menú", "Triggers & menu"), muted);
+    draw_text(pixels, &small_font, 367, 166, localized(language, "Stick analógico", "Analog stick"), muted);
     for (size_t i = 0; i < sizeof buttons / sizeof buttons[0]; ++i)
         draw_button(pixels, &buttons[i], panel);
     draw_stick(pixels, panel->stick_x, panel->stick_y);
 
-    const char *exit = "Salir";
-    const char *stick = "SELECT + X   Probar stick";
-    const char *reset = "Mantén SELECT + START   Borrar marcas";
+    const char *exit = localized(language, "Salir", "Exit");
+    const char *stick = localized(language, "SELECT + X   Probar stick", "SELECT + X   Test stick");
+    const char *reset = localized(language, "Mantén SELECT + START   Borrar marcas", "Hold SELECT + START   Clear marks");
     int exit_right = 38 + text_width(&small_font, exit);
     int reset_left = 464 - text_width(&small_font, reset);
     int stick_left = (exit_right + reset_left - text_width(&small_font, stick)) / 2;
@@ -464,7 +509,7 @@ static void draw_stick_map(uint32_t *pixels, const Panel *panel, const StickTest
     snprintf(axes, sizeof axes, "X %d   Y %d", dx, dy);
     draw_text(pixels, &small_font, cx - text_width(&small_font, axes) / 2, 226, axes, text);
     if (zoom) {
-        const char *scale = "Centro ampliado";
+        const char *scale = localized(panel->language, "Centro ampliado", "Center zoom");
         draw_text(pixels, &small_font, cx - text_width(&small_font, scale) / 2, 66, scale, muted);
     }
 }
@@ -477,24 +522,24 @@ static unsigned int reached_directions(const StickTest *test)
     return count;
 }
 
-static void draw_center_result(uint32_t *pixels, int y, const char *label,
-                               const StickCenter *center, const char *override)
+static void draw_center_result(uint32_t *pixels, enum PanelLanguage language, int y,
+                               const char *label, const StickCenter *center, const char *override)
 {
     if (!center->samples)
         return;
     unsigned int span_x = center->max_x - center->min_x;
     unsigned int span_y = center->max_y - center->min_y;
     bool jitter = span_x > STICK_JITTER_TOLERANCE || span_y > STICK_JITTER_TOLERANCE;
-    const char *result = "Estable";
+    const char *result = localized(language, "Estable", "Stable");
     uint32_t color = hold_green;
     if (override) {
         result = override;
         color = amber;
     } else if (center->drift) {
-        result = "Desvío sostenido";
+        result = localized(language, "Desvío sostenido", "Sustained drift");
         color = amber;
     } else if (jitter || center->peak_distance_squared > STICK_CENTER_TOLERANCE * STICK_CENTER_TOLERANCE) {
-        result = "Oscilación";
+        result = localized(language, "Oscilación", "Jitter");
         color = amber;
     }
 
@@ -502,27 +547,37 @@ static void draw_center_result(uint32_t *pixels, int y, const char *label,
     int average_y = (int)((center->sum_y + center->samples / 2) / center->samples) - STICK_MIDPOINT;
     unsigned int peak = (unsigned int)(sqrtf((float)center->peak_distance_squared) + 0.5f);
     char readings[80];
-    snprintf(readings, sizeof readings, "X %+d / Y %+d de media  ·  Pico %u", average_x, average_y, peak);
+    snprintf(readings, sizeof readings,
+             localized(language, "X %+d / Y %+d de media  ·  Pico %u", "Avg X %+d / Y %+d  ·  Peak %u"),
+             average_x, average_y, peak);
     draw_text(pixels, &label_font, 216, y, label, text);
     draw_text(pixels, &small_font, 452 - text_width(&small_font, result), y, result, color);
     draw_text(pixels, &small_font, 216, y + 16, readings, muted);
-    snprintf(readings, sizeof readings, "Variación X %u / Y %u puntos", span_x, span_y);
+    snprintf(readings, sizeof readings,
+             localized(language, "Variación X %u / Y %u puntos", "Variation X %u / Y %u points"), span_x, span_y);
     draw_text(pixels, &small_font, 216, y + 32, readings, muted);
 }
 
-static const char *const direction_names[STICK_DIRECTIONS] = {"N", "NE", "E", "SE", "S", "SO", "O", "NO"};
+static const char *direction_name(enum PanelLanguage language, enum StickDirection direction)
+{
+    static const char *const spanish[] = {"N", "NE", "E", "SE", "S", "SO", "O", "NO"};
+    static const char *const english[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+    return localized(language, spanish[direction], english[direction]);
+}
 
-static void draw_return_status(uint32_t *pixels, const StickTest *test, int y)
+static void draw_return_status(uint32_t *pixels, enum PanelLanguage language, const StickTest *test, int y)
 {
     const char *warning = NULL;
     if (!test->reached_center)
-        warning = "No llegó al centro";
+        warning = localized(language, "No llegó al centro", "Didn't reach center");
     else if (!test->return_peak)
-        warning = "Tope sin confirmar";
-    draw_center_result(pixels, y, "Vuelta al centro", &test->after_release, warning);
+        warning = localized(language, "Tope sin confirmar", "Stop not reached");
+    draw_center_result(pixels, language, y, localized(language, "Vuelta al centro", "Return to center"),
+                       &test->after_release, warning);
 }
 
-static void draw_direction_scores(uint32_t *pixels, const StickTest *test, int top, int height)
+static void draw_direction_scores(uint32_t *pixels, enum PanelLanguage language, const StickTest *test,
+                                  int top, int height)
 {
     for (int i = 0; i < STICK_DIRECTIONS; ++i) {
         int x = 216 + (i % 4) * 60;
@@ -530,91 +585,117 @@ static void draw_direction_scores(uint32_t *pixels, const StickTest *test, int t
         bool reached = (test->reached & (1u << i)) != 0;
         round_box(pixels, x, y, 56, height, 5, reached ? RGB(0x203e38) : well);
         int baseline = y + (height + 9) / 2;
-        draw_text(pixels, &small_font, x + 4, baseline, direction_names[i], reached ? hold_green : muted);
+        draw_text(pixels, &small_font, x + 3, baseline, direction_name(language, i), reached ? hold_green : muted);
         char score[12] = "--";
         if (test->range_peak[i])
             snprintf(score, sizeof score, "%u%%", (unsigned int)test->range_peak[i]);
-        draw_text(pixels, &button_font, x + 52 - text_width(&button_font, score), baseline, score,
+        draw_text(pixels, &button_font, x + 53 - text_width(&button_font, score), baseline, score,
                   reached ? hold_green : text);
     }
 }
 
-static void draw_stick_timer(uint32_t *pixels, uint32_t elapsed, unsigned int seconds, int y)
+static void draw_stick_timer(uint32_t *pixels, enum PanelLanguage language, uint32_t elapsed,
+                             unsigned int seconds, int y)
 {
     char timer[24];
     unsigned int remaining = seconds * 10 - elapsed / 100000;
-    snprintf(timer, sizeof timer, "Midiendo  %u,%u s", remaining / 10, remaining % 10);
+    snprintf(timer, sizeof timer, localized(language, "Midiendo  %u%c%u s", "Measuring  %u%c%u s"),
+             remaining / 10, decimal_point(language), remaining % 10);
     draw_text(pixels, &label_font, 216, y, timer, mint);
     draw_meter(pixels, 216, y + 10, 236, elapsed / (seconds * 10000), mint);
 }
 
 void stick_test_draw(uint32_t *pixels, const Panel *panel, const StickTest *test)
 {
+    enum PanelLanguage language = panel->language;
+    const char *rest_label = localized(language, "Reposo", "At rest");
+    const char *range_title = localized(language, "3/3  Recorrido por el borde", "3/3  Outer range");
+    const char *range_instruction = localized(language, "Da una vuelta lenta por todo el borde.",
+                                              "Move slowly around the outer edge.");
     draw_background(pixels);
-    draw_text(pixels, &large_font, 16, 35, "Stick analógico", text);
+    draw_text(pixels, &large_font, 16, 35, localized(language, "Stick analógico", "Analog stick"), text);
     card_box(pixels, 16, 49, 177, 195);
     card_box(pixels, 204, 49, 260, 195);
     draw_stick_map(pixels, panel, test);
 
     const char *confirm = NULL;
     if (test->phase <= STICK_REST) {
-        draw_text(pixels, &label_font, 216, 72, "1/3  Reposo", blue);
-        draw_text(pixels, &small_font, 216, 96, "Deja el stick sin tocar.", text);
+        draw_text(pixels, &label_font, 216, 72, localized(language, "1/3  Reposo", "1/3  At rest"), blue);
+        draw_text(pixels, &small_font, 216, 96,
+                  localized(language, "Deja el stick sin tocar.", "Leave the stick untouched."), text);
         if (test->phase == STICK_READY) {
-            confirm = "Empezar";
+            confirm = localized(language, "Empezar", "Start");
         } else if (test->phase == STICK_SETTLE) {
-            draw_text(pixels, &label_font, 216, 147, "Preparando...", mint);
+            draw_text(pixels, &label_font, 216, 147,
+                      localized(language, "Preparando...", "Get ready..."), mint);
         } else {
-            draw_stick_timer(pixels, test->elapsed_us, STICK_REST_SECONDS, 147);
-            draw_center_result(pixels, 189, "Reposo", &test->rest, NULL);
+            draw_stick_timer(pixels, language, test->elapsed_us, STICK_REST_SECONDS, 147);
+            draw_center_result(pixels, language, 189, rest_label, &test->rest, NULL);
         }
     } else if (test->phase < STICK_RANGE_READY) {
-        draw_text(pixels, &label_font, 216, 72, "2/3  Vuelta al centro", blue);
+        draw_text(pixels, &label_font, 216, 72,
+                  localized(language, "2/3  Vuelta al centro", "2/3  Return to center"), blue);
+        const char *released = localized(language, "Ya lo solté", "I've let go");
         if (test->phase == STICK_RETURN_TARGET) {
-            draw_text(pixels, &small_font, 216, 96, "Empuja hasta el tope en un eje X o Y.", text);
-            draw_text(pixels, &small_font, 216, 113, "Elige arriba, abajo, izquierda o derecha.", muted);
-            confirm = "Ya lo solté";
+            draw_text(pixels, &small_font, 216, 96,
+                      localized(language, "Empuja hasta el tope en un eje X o Y.",
+                                "Push the stick all the way on one axis."), text);
+            draw_text(pixels, &small_font, 216, 113,
+                      localized(language, "Elige arriba, abajo, izquierda o derecha.",
+                                "Choose up, down, left, or right."), muted);
+            confirm = released;
         } else if (test->phase == STICK_RETURN_RELEASE) {
             char limit[48];
-            snprintf(limit, sizeof limit, "Tope %s detectado. Suelta el stick.",
-                     direction_names[test->return_direction]);
+            snprintf(limit, sizeof limit, localized(language, "Tope %s detectado. Suelta el stick.",
+                                                    "%s stop reached. Let go."),
+                     direction_name(language, test->return_direction));
             draw_text(pixels, &label_font, 216, 97, limit, mint);
-            draw_text(pixels, &small_font, 216, 117, "Si se queda atascado, pulsa X al soltar.", muted);
-            confirm = "Ya lo solté";
+            draw_text(pixels, &small_font, 216, 117,
+                      localized(language, "Si se queda atascado, pulsa X al soltar.",
+                                "If it sticks, press X after letting go."), muted);
+            confirm = released;
         } else {
-            draw_text(pixels, &small_font, 216, 96, "Deja que el stick vuelva solo al centro.", text);
-            draw_stick_timer(pixels, test->elapsed_us, STICK_RETURN_SECONDS, 133);
+            draw_text(pixels, &small_font, 216, 96,
+                      localized(language, "Deja que el stick vuelva solo al centro.",
+                                "Let the stick return to center on its own."), text);
+            draw_stick_timer(pixels, language, test->elapsed_us, STICK_RETURN_SECONDS, 133);
         }
-        draw_center_result(pixels, 184, "Reposo", &test->rest, NULL);
+        draw_center_result(pixels, language, 184, rest_label, &test->rest, NULL);
     } else if (test->phase == STICK_RANGE_READY) {
-        draw_text(pixels, &label_font, 216, 72, "3/3  Recorrido por el borde", blue);
-        draw_text(pixels, &small_font, 216, 97, "Da una vuelta lenta por todo el borde.", text);
-        draw_return_status(pixels, test, 140);
-        confirm = "Empezar recorrido";
+        draw_text(pixels, &label_font, 216, 72, range_title, blue);
+        draw_text(pixels, &small_font, 216, 97, range_instruction, text);
+        draw_return_status(pixels, language, test, 140);
+        confirm = localized(language, "Empezar recorrido", "Start sweep");
     } else {
         unsigned int count = reached_directions(test);
         bool results = test->phase == STICK_RESULTS;
-        draw_text(pixels, &label_font, 216, 72, results ? "Resultado del stick" : "3/3  Recorrido por el borde", blue);
+        const char *title = results ? localized(language, "Resultado del stick", "Stick test results") : range_title;
+        draw_text(pixels, &label_font, 216, 72, title, blue);
         char reached[45];
-        snprintf(reached, sizeof reached, "%u/%u direcciones  ·  Objetivo %u%%", count,
+        snprintf(reached, sizeof reached,
+                 localized(language, "%u/%u direcciones  ·  Objetivo %u%%", "%u/%u directions  ·  Target %u%%"), count,
                  (unsigned int)STICK_DIRECTIONS, (unsigned int)STICK_RANGE_TARGET);
         uint32_t range_color = count == STICK_DIRECTIONS ? hold_green : muted;
         if (results) {
-            draw_center_result(pixels, 92, "Reposo", &test->rest, NULL);
-            draw_return_status(pixels, test, 143);
+            draw_center_result(pixels, language, 92, rest_label, &test->rest, NULL);
+            draw_return_status(pixels, language, test, 143);
             draw_text(pixels, &small_font, 216, 193, reached, range_color);
-            draw_direction_scores(pixels, test, 198, 18);
+            draw_direction_scores(pixels, language, test, 198, 18);
         } else {
-            draw_text(pixels, &small_font, 216, 97, "Da una vuelta lenta por todo el borde.", text);
+            draw_text(pixels, &small_font, 216, 97, range_instruction, text);
             draw_text(pixels, &small_font, 216, 122, reached, range_color);
-            draw_direction_scores(pixels, test, 133, 23);
+            draw_direction_scores(pixels, language, test, 133, 23);
         }
-        confirm = results ? "Repetir" : "Ver resultado";
+        confirm = results ? localized(language, "Repetir", "Run again") :
+                            localized(language, "Ver resultado", "View results");
     }
     if (confirm) {
         draw_text(pixels, &label_font, 16, 260, "X", blue);
         draw_text(pixels, &small_font, 30, 260, confirm, muted);
     }
-    draw_text(pixels, &label_font, 319, 260, "Círculo", blue);
-    draw_text(pixels, &small_font, 370, 260, "Volver al panel", muted);
+    const char *circle = localized(language, "Círculo", "Circle");
+    const char *back = localized(language, "Volver al panel", "Back to panel");
+    int back_left = 452 - text_width(&small_font, back);
+    draw_text(pixels, &label_font, back_left - 10 - text_width(&label_font, circle), 260, circle, blue);
+    draw_text(pixels, &small_font, back_left, 260, back, muted);
 }

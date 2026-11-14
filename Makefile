@@ -1,8 +1,8 @@
 TARGET = panelpsp
-OBJS = main.o panel.o button_test.o stick_test.o
+OBJS = main.o panel.o button_test.o stick_test.o language.o
 
 CFLAGS = -O2 -Wall -Wextra -Werror
-LIBS = -lpsppower -lpspge -lpspdisplay -lpspctrl -lpspwlan -lpspkubridge -lpspsystemctrl_user -lm
+LIBS = -lpsppower -lpspge -lpspdisplay -lpspctrl -lpspwlan -lpsputility -lpspkubridge -lpspsystemctrl_user -lm
 BUILD_PRX = 1
 PSP_FW_VERSION = 661
 PSP_LARGE_MEMORY = 0
@@ -17,4 +17,5 @@ include $(PSPSDK)/lib/build.mak
 panel.o: font.inc panel.h button_test.h
 main.o button_test.o: panel.h button_test.h
 main.o panel.o stick_test.o: stick_test.h
+main.o panel.o button_test.o language.o: language.h
 EBOOT.PBP: ICON0.PNG
